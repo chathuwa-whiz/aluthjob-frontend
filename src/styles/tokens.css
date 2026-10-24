@@ -1,0 +1,144 @@
+/*
+  Design tokens.
+
+  Scene: someone at home in the evening, or on a phone during the commute, reading letters carefully
+  before approving them to be sent in their name. Calm paper-white surfaces on a faintly green canvas,
+  dark ink, and one green taken from the AluthJob logo (--brand) used for the mark. Buttons, selection
+  and focus use a deeper shade of it (--primary) so white text on them stays readable. Amber and red
+  appear only as status. Neutrals lean very slightly toward the green hue.
+*/
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- type ---- */
+  --font: "Inter Variable", system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Sinhala", "Nirmala UI", "Noto Sans Tamil", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  /* fixed rem scale, about 1.15 per step: product UI does not use fluid type */
+  --t-xs: 0.8125rem;
+  --t-sm: 0.875rem;
+  --t-base: 1rem;
+  --t-md: 1.125rem;
+  --t-lg: 1.3125rem;
+  --t-xl: 1.5rem;
+  --t-2xl: 1.875rem;
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.55; /* roomy on purpose: Sinhala and Tamil need it */
+
+  /* ---- space (4px base) ---- */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 3rem;
+  --s-8: 4.5rem;
+
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+
+  /* ---- sizing ---- */
+  --tap: 2.5rem; /* minimum height of a control; grows on touch screens, see base.css */
+  --sidebar-w: 16rem;
+
+  /* ---- motion ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --fast: 150ms;
+  --base: 200ms;
+
+  /* ---- layering ---- */
+  --z-sticky: 10;
+  --z-drawer: 30;
+  --z-toast: 50;
+
+  /* ---- colour: light ---- */
+  --bg: oklch(1 0 0); /* panels and inputs */
+  --canvas: oklch(0.972 0.008 155); /* the page behind the panels */
+  --brand: oklch(0.7 0.19 153); /* the logo green: decoration only, too light for text */
+  --surface: oklch(0.98 0.005 155);
+  --surface-2: oklch(0.962 0.007 155); /* sidebar, wells: the second neutral layer */
+  --line: oklch(0.905 0.007 155);
+  --line-strong: oklch(0.8 0.012 155);
+  --control: oklch(0.6 0.012 155); /* borders of inputs and buttons: needs 3:1 against the page */
+
+  --ink: oklch(0.21 0.02 155);
+  --ink-2: oklch(0.36 0.02 155);
+  --muted: oklch(0.47 0.015 155);
+
+  --primary: oklch(0.52 0.14 153);
+  --primary-hover: oklch(0.46 0.13 153);
+  --primary-press: oklch(0.4 0.12 153);
+  --on-primary: oklch(1 0 0);
+  --primary-soft: oklch(0.962 0.034 153);
+  --primary-line: oklch(0.86 0.08 153);
+  --link: oklch(0.45 0.13 153);
+  --focus: oklch(0.58 0.17 153);
+
+  --ok-bg: oklch(0.965 0.04 160);
+  --ok-ink: oklch(0.36 0.08 160);
+  --ok-line: oklch(0.86 0.07 160);
+  --ok-solid: oklch(0.5 0.11 160);
+
+  --warn-bg: oklch(0.97 0.05 92);
+  --warn-ink: oklch(0.4 0.08 70);
+  --warn-line: oklch(0.86 0.09 88);
+  --warn-solid: oklch(0.62 0.14 75);
+
+  --bad-bg: oklch(0.97 0.02 25);
+  --bad-ink: oklch(0.44 0.16 25);
+  --bad-line: oklch(0.87 0.06 25);
+  --bad-solid: oklch(0.52 0.19 25);
+
+  --shadow-pop: 0 8px 28px oklch(0.2 0.03 155 / 0.16), 0 1px 3px oklch(0.2 0.03 155 / 0.1);
+  --shadow-card: 0 1px 2px oklch(0.25 0.03 155 / 0.05), 0 4px 16px oklch(0.25 0.03 155 / 0.05);
+  --scrim: oklch(0.2 0.02 155 / 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: oklch(0.2 0.006 155);
+    --canvas: oklch(0.15 0.006 155);
+    --brand: oklch(0.76 0.19 153);
+    --surface: oklch(0.235 0.008 155);
+    --surface-2: oklch(0.255 0.009 155);
+    --line: oklch(0.29 0.008 155);
+    --line-strong: oklch(0.4 0.012 155);
+    --control: oklch(0.58 0.012 155);
+
+    --ink: oklch(0.94 0.008 155);
+    --ink-2: oklch(0.84 0.01 155);
+    --muted: oklch(0.73 0.012 155);
+
+    --primary: oklch(0.55 0.15 153);
+    /* hover and press go darker, not lighter: white text on the lighter shades would fail contrast */
+    --primary-hover: oklch(0.5 0.14 153);
+    --primary-press: oklch(0.45 0.13 153);
+    --primary-soft: oklch(0.27 0.05 153);
+    --primary-line: oklch(0.4 0.09 153);
+    --link: oklch(0.8 0.15 153);
+    --focus: oklch(0.75 0.18 153);
+
+    --ok-bg: oklch(0.26 0.05 160);
+    --ok-ink: oklch(0.86 0.09 160);
+    --ok-line: oklch(0.4 0.07 160);
+    --ok-solid: oklch(0.68 0.13 160);
+
+    --warn-bg: oklch(0.27 0.05 85);
+    --warn-ink: oklch(0.88 0.09 90);
+    --warn-line: oklch(0.42 0.08 85);
+    --warn-solid: oklch(0.76 0.14 85);
+
+    --bad-bg: oklch(0.26 0.06 25);
+    --bad-ink: oklch(0.86 0.1 25);
+    --bad-line: oklch(0.42 0.1 25);
+    --bad-solid: oklch(0.7 0.17 25);
+
+    --shadow-pop: 0 8px 28px oklch(0 0 0 / 0.5), 0 1px 3px oklch(0 0 0 / 0.4);
+    --shadow-card: 0 1px 2px oklch(0 0 0 / 0.3);
+    --scrim: oklch(0 0 0 / 0.55);
+  }
+}

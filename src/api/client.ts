@@ -44,6 +44,8 @@ interface Envelope<T> {
 const NETWORK_MESSAGE = "Can't reach the server. Check your connection and try again.";
 const SERVER_MESSAGE = "Something went wrong on our side. Please try again in a moment.";
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
+
 export async function request<T>(method: string, path: string, options: Options = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: "application/json" };
   let body: BodyInit | undefined;
@@ -57,7 +59,7 @@ export async function request<T>(method: string, path: string, options: Options 
 
   let response: Response;
   try {
-    response = await fetch(`/api/v1${path}`, { method, headers, body, credentials: "same-origin", signal: options.signal });
+    response = await fetch(`${API_BASE}/api/v1${path}`, { method, headers, body, credentials: "include", signal: options.signal });
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") throw error;
     throw new ApiError(NETWORK_MESSAGE, 0);

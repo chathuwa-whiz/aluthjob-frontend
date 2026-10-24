@@ -8,7 +8,7 @@ describe("api client", () => {
     const api = fakeApi({ "GET /things": { data: { ok: [1, 2] } } });
 
     await expect(get("/things")).resolves.toEqual({ ok: [1, 2] });
-    expect(vi.mocked(fetch).mock.calls[0]![1]).toMatchObject({ credentials: "same-origin", method: "GET" });
+    expect(vi.mocked(fetch).mock.calls[0]![1]).toMatchObject({ credentials: "include", method: "GET" });
     expect(api.calls).toHaveLength(1);
   });
 

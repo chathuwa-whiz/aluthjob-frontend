@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config";
 // The browser only ever talks to its own origin: in development Vite forwards /api to the API server, and in
 // production a reverse proxy (see README) does the same. That keeps the session cookie first-party and means
 // the API needs no cross-origin setup beyond FRONTEND_URL.
-const backendUrl = process.env.VITE_API_URL || "http://localhost:4000";
+const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:4000";
 const api = { "/api": { target: backendUrl, changeOrigin: true } };
 
 export default defineConfig({

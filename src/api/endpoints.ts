@@ -76,7 +76,8 @@ export const matches = {
   reject: (id: number) => post<Match>(`/matches/${id}/reject`, {}),
   preview: (id: number) => get<EmailPreview>(`/matches/${id}/email-preview`),
   confirmAddress: (id: number, address: string) => post<Match>(`/matches/${id}/confirm-address`, { address }),
-  send: (id: number) => post<Application>(`/matches/${id}/send`, {}),
+  /** `again` is the person's explicit "send it a second time" for an application that was already sent. */
+  send: (id: number, again = false) => post<Application>(`/matches/${id}/send`, again ? { again: true } : {}),
 };
 
 export const applications = {

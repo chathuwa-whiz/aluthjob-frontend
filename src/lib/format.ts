@@ -1,4 +1,4 @@
-import type { ApplicationStatus, JobSource, MatchStatus } from "../api/types";
+import type { Application, ApplicationStatus, JobSource, MatchStatus } from "../api/types";
 
 const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
 const dateTime = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -63,6 +63,23 @@ export const MATCH_STATUS_LABEL: Record<MatchStatus, string> = {
   approved: "Approved",
   rejected: "Skipped",
 };
+
+/**
+ * The one status shown for a match. Once an application exists it tells the real story ("Sent"), because
+ * "Approved" only means the person approved the letter.
+ */
+export function matchBadge(status: MatchStatus, application?: Pick<Application, "status"> | null): { label: string; kind: "ok" | "bad" | "primary" | undefined } {
+  switch (application?.status) {
+    case "sent":
+      return { label: "Sent", kind: "ok" };
+    case "queued":
+    case "sending":
+      return { label: APPLICATION_STATUS_LABEL[application.status], kind: "primary" };
+    case "failed":
+      return { label: "Send failed", kind: "bad" };
+  }
+  return { label: MATCH_STATUS_LABEL[status], kind: status === "approved" ? "ok" : status === "rejected" ? undefined : "primary" };
+}
 
 export const APPLICATION_STATUS_LABEL: Record<ApplicationStatus, string> = {
   queued: "Waiting to send",

@@ -607,3 +607,51 @@
   .task { padding: var(--s-4); }
   .track { flex-direction: column; }
 }
+
+/* ---------- app password guide ---------- */
+
+.guide {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.guide > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  padding: var(--s-2) var(--s-4);
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+  border-radius: var(--radius);
+}
+.guide > summary::-webkit-details-marker { display: none; }
+.guide > summary:hover { color: var(--link); }
+.guide__chevron { margin-left: auto; flex: none; transition: transform var(--fast) var(--ease-out); }
+.guide[open] > summary .guide__chevron { transform: rotate(180deg); }
+
+.guide__body { display: grid; gap: var(--s-4); padding: 0 var(--s-4) var(--s-4); }
+.guide__panel { display: grid; gap: var(--s-4); }
+.guide__steps { display: grid; gap: var(--s-4); }
+
+.guide__example { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.guide__code {
+  padding: var(--s-2) var(--s-3);
+  font-family: var(--font-mono);
+  letter-spacing: 0.08em;
+  background: var(--bg);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  user-select: all;
+}
+
+.guide__note { display: flex; gap: var(--s-2); align-items: flex-start; color: var(--ink-2); }
+.guide__note svg { flex: none; margin-top: 0.15em; color: var(--ok-solid); }
+
+.guide__more summary { cursor: pointer; color: var(--link); width: fit-content; }
+.guide__more ul { margin: var(--s-2) 0 0; padding-left: var(--s-5); display: grid; gap: var(--s-1); color: var(--ink-2); list-style: disc; }
+
+@media (prefers-reduced-motion: reduce) {
+  .guide__chevron { transition: none; }
+}

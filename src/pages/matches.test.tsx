@@ -1,4 +1,4 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { application, fakeApi, finishedRun, frames, job, MAILBOX, match, PROFILE, renderApp, run, signedIn, user } from "../test/harness";
@@ -75,6 +75,16 @@ describe("matches list", () => {
     expect(screen.getByRole("link", { name: /Backend Engineer/ })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /Full Stack Developer/ })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Backend Engineer/ })).toHaveTextContent("Approved");
+  });
+
+  it("marks an approved match Sent once its application has gone out", async () => {
+    fakeApi({ ...withMatches(), "GET /candidates/7/applications": { data: [application({ matchId: 3, status: "sent", sentAt: "2026-10-24T03:00:00.000Z" })] } });
+    renderApp("/");
+
+    await userEvent.click(await screen.findByRole("tab", { name: /Approved/ }));
+    const row = await screen.findByRole("link", { name: /Backend Engineer/ });
+    await waitFor(() => expect(row).toHaveTextContent("Sent"));
+    expect(row).not.toHaveTextContent("Approved");
   });
 
   it("moves between tabs with the arrow keys", async () => {

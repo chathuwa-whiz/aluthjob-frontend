@@ -227,6 +227,54 @@ describe("match page: approving and sending", () => {
     expect(screen.queryByRole("button", { name: "Approve this letter" })).not.toBeInTheDocument();
   });
 
+  it("says Sent at the top of the page once the application has gone out, not Approved", async () => {
+    screenFor(withLetter({ status: "approved" }), { "GET /candidates/7/applications": { data: [application({ status: "sent", sentAt: "2026-10-24T03:00:00.000Z" })] } });
+    renderApp("/matches/1");
+
+    const header = (await screen.findByRole("heading", { level: 1 })).closest("header")!;
+    expect(await within(header).findByText("Sent")).toBeInTheDocument();
+    expect(within(header).queryByText("Approved")).not.toBeInTheDocument();
+  });
+
+  it("offers Send application again after a send, asks first, and then queues it as a second send", async () => {
+    const api = screenFor(withLetter({ status: "approved" }), {
+      "GET /candidates/7/applications": { data: [application({ status: "sent", sentAt: "2026-10-24T03:00:00.000Z" })] },
+      "POST /matches/1/send": { status: 202, data: application({ status: "queued", sentAt: "2026-10-24T03:00:00.000Z" }) },
+    });
+    renderApp("/matches/1");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Send application again" }));
+
+    // nothing is sent by that click alone
+    expect(api.called("POST", "/matches/1/send")).toHaveLength(0);
+    expect(await screen.findByText("Send this application again?")).toBeInTheDocument();
+    expect(screen.getByText(/careers@acme.lk already received it on/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Yes, send it again" }));
+
+    expect(await screen.findByText("Queued again. It will be sent shortly.")).toBeInTheDocument();
+    expect(api.called("POST", "/matches/1/send")[0]!.body).toEqual({ again: true });
+  });
+
+  it("lets the person back out of sending again", async () => {
+    const api = screenFor(withLetter({ status: "approved" }), { "GET /candidates/7/applications": { data: [application({ status: "sent", sentAt: "2026-10-24T03:00:00.000Z" })] } });
+    renderApp("/matches/1");
+
+    await userEvent.click(await screen.findByRole("button", { name: "Send application again" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Not now" }));
+
+    expect(await screen.findByRole("button", { name: "Send application again" })).toBeInTheDocument();
+    expect(api.called("POST", "/matches/1/send")).toHaveLength(0);
+  });
+
+  it("does not offer a second send while the application is still waiting or being sent", async () => {
+    screenFor(withLetter({ status: "approved" }), { "GET /candidates/7/applications": { data: [application({ status: "queued" })] } });
+    renderApp("/matches/1");
+
+    expect(await screen.findByText("Waiting to send", { selector: ".alert__title" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Send application/ })).not.toBeInTheDocument();
+  });
+
   it("surfaces a failed delivery with the reason", async () => {
     screenFor(withLetter({ status: "approved" }), { "GET /candidates/7/applications": { data: [application({ status: "failed", error: "The mail server rejected the login." })] } });
     renderApp("/matches/1");

@@ -1,19 +1,20 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Briefcase, Check, ExternalLink, FileText, Mail, Search } from "lucide-react";
+import { AlertTriangle, Briefcase, Check, ExternalLink, FileText, Mail, Search, Send } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { messageOf } from "../api/client";
 import { candidates } from "../api/endpoints";
-import { keys, useMailbox, useMatches, useRun } from "../api/queries";
-import type { Match, MatchRunSummary, MatchStatus, RunProgress } from "../api/types";
+import { keys, useApplications, useMailbox, useMatches, useRun } from "../api/queries";
+import type { Application, Match, MatchRunSummary, MatchStatus, RunProgress } from "../api/types";
 import { useResumes } from "../auth/ResumeProvider";
 import { Alert } from "../components/Alert";
+import { AppPasswordGuide } from "../components/AppPasswordGuide";
 import { EmptyState, PageHead, Score, SkeletonRows } from "../components/Bits";
 import { Button, buttonClass } from "../components/Button";
 import { Pill } from "../components/Pill";
 import { SearchProgress } from "../components/SearchProgress";
 import { Tabs, panelId, tabId } from "../components/Tabs";
-import { formatDate, formatElapsed, SOURCE_LABEL } from "../lib/format";
+import { formatDate, formatElapsed, matchBadge, SOURCE_LABEL } from "../lib/format";
 import { usePageTitle } from "../lib/usePageTitle";
 
 type Tab = MatchStatus;
@@ -50,6 +51,9 @@ export function Matches() {
     for (const match of all ?? []) result[match.status]++;
     return result;
   }, [all]);
+
+  const applications = useApplications(active?.id);
+  const applicationOf = useMemo(() => new Map((applications.data ?? []).map((application) => [application.matchId, application])), [applications.data]);
 
   const shown = useMemo(
     () => (all ?? []).filter((match) => match.status === tab && (!emailOnly || match.applyMethod === "email")),
@@ -154,7 +158,7 @@ export function Matches() {
               <ul className="rows">
                 {shown.map((match) => (
                   <li key={match.id}>
-                    <MatchRow match={match} />
+                    <MatchRow match={match} application={applicationOf.get(match.id)} />
                   </li>
                 ))}
               </ul>
@@ -197,12 +201,13 @@ function SearchSummary({ run, summary }: { run: RunProgress; summary: MatchRunSu
   );
 }
 
-function MatchRow({ match }: { match: Match }) {
+function MatchRow({ match, application }: { match: Match; application?: Application }) {
   const { job, details } = match;
   const where = [job.company, job.location].filter(Boolean).join(" · ");
   const closes = job.closingAt ? `Closes ${formatDate(job.closingAt)}` : null;
   // An address read from a picture has to be double-checked by the person before anything is sent to it
   const needsAddressCheck = match.applyMethod === "email" && job.applyEmailSource === "image";
+  const badge = matchBadge(match.status, application);
 
   return (
     <Link to={`/matches/${match.id}`} className="match-row">
@@ -232,8 +237,8 @@ function MatchRow({ match }: { match: Match }) {
         )}
         {needsAddressCheck && <Pill kind="warn">Check address</Pill>}
         {match.status === "approved" && (
-          <Pill kind="ok">
-            <Check size={13} aria-hidden="true" /> Approved
+          <Pill kind={badge.kind}>
+            {application?.status === "sent" ? <Send size={13} aria-hidden="true" /> : <Check size={13} aria-hidden="true" />} {application ? badge.label : "Approved"}
           </Pill>
         )}
         {match.status === "suggested" && match.coverLetter && <Pill>Letter drafted</Pill>}
@@ -285,6 +290,7 @@ function SetupSteps({ hasResume, hasMailbox, onFind, finding }: { hasResume: boo
                 </Link>
               </div>
             )}
+            {hasResume && !hasMailbox && <AppPasswordGuide />}
           </div>
         </li>
 

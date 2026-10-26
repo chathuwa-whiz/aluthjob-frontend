@@ -13,7 +13,7 @@ import { TextAreaField, TextField } from "../components/Field";
 import { LongTask } from "../components/LongTask";
 import { Pill } from "../components/Pill";
 import { useToast } from "../components/Toast";
-import { APPLICATION_STATUS_LABEL, BREAKDOWN_LABEL, formatBytes, formatDate, MATCH_STATUS_LABEL, SCORE_LABEL, scoreTier, SOURCE_LABEL } from "../lib/format";
+import { APPLICATION_STATUS_LABEL, BREAKDOWN_LABEL, formatBytes, formatDate, matchBadge, SCORE_LABEL, scoreTier, SOURCE_LABEL } from "../lib/format";
 import { safeHttpUrl } from "../lib/url";
 import { usePageTitle } from "../lib/usePageTitle";
 
@@ -55,8 +55,10 @@ export function MatchDetail() {
 function MatchView({ match }: { match: Match }) {
   const { job, details } = match;
   usePageTitle(job.title);
-  const advertUrl
- = safeHttpUrl(job.url);
+  const advertUrl = safeHttpUrl(job.url);
+  // Shared with the send panel through the query cache; the header shows "Sent" once it has been
+  const application = useApplications(match.candidateId).data?.find((item) => item.matchId === match.id);
+  const badge = matchBadge(match.status, application);
   const tier = scoreTier(match.score);
   const where = [job.company, job.location].filter(Boolean).join(" · ");
   // Whether the letter on screen differs from the saved one. Approving or sending is blocked meanwhile, so the
@@ -76,7 +78,7 @@ function MatchView({ match }: { match: Match }) {
         </div>
         <p className="muted wrap">{[where, SOURCE_LABEL[job.source], job.closingAt ? `Closes ${formatDate(job.closingAt)}` : null].filter(Boolean).join(" · ")}</p>
         <div className="action-bar">
-          <Pill kind={match.status === "approved" ? "ok" : match.status === "rejected" ? undefined : "primary"}>{MATCH_STATUS_LABEL[match.status]}</Pill>
+          <Pill kind={badge.kind}>{badge.label}</Pill>
           <span className="muted small">{SCORE_LABEL[tier]}</span>
           {advertUrl && (
             <a className="small" href={advertUrl} target="_blank" rel="noopener noreferrer">
@@ -371,13 +373,19 @@ function SendPanel({ match, unsaved }: { match: Match; unsaved: boolean }) {
       toast("Skipped. You can find it under Skipped.");
     },
   });
+  const [confirmingAgain, setConfirmingAgain] = useState(false);
+  // After a first send the same action is offered again, worded as such and confirmed, because it emails the employer a second copy
+  const sentBefore = Boolean(application?.sentAt);
   const send = useMutation({
-    mutationFn: () => matchApi.send(match.id),
+    mutationFn: () => matchApi.send(match.id, sentBefore),
     onSuccess: async () => {
+      setConfirmingAgain(false);
       await refreshAll();
-      toast("Queued. It will be sent shortly.");
+      toast(sentBefore ? "Queued again. It will be sent shortly." : "Queued. It will be sent shortly.");
     },
   });
+  // a sent or cancelled application can be queued again; one that is waiting, sending or failed has its own controls
+  const canSendAgain = application?.status === "sent" || application?.status === "cancelled";
 
   const data = preview.data;
   const problems = data?.problems ?? [];
@@ -471,7 +479,27 @@ function SendPanel({ match, unsaved }: { match: Match; unsaved: boolean }) {
 
         {(approve.isError || reject.isError || send.isError) && <Alert kind="bad">{messageOf(approve.error ?? reject.error ?? send.error)}</Alert>}
 
-        {hasLetter && !application && (
+        {confirmingAgain && application && (
+          <Alert
+            kind="warn"
+            title="Send this application again?"
+            actions={
+              <>
+                <Button size="sm" variant="primary" busy={send.isPending} onClick={() => send.mutate()}>
+                  Yes, send it again
+                </Button>
+                <Button size="sm" variant="secondary" disabled={send.isPending} onClick={() => setConfirmingAgain(false)}>
+                  Not now
+                </Button>
+              </>
+            }
+          >
+            {application.sentAt ? `${application.toEmail} already received it on ${formatDate(application.sentAt)}. ` : ""}
+            Sending again emails them a second copy of this letter and your CV.
+          </Alert>
+        )}
+
+        {hasLetter && (!application || canSendAgain) && !confirmingAgain && (
           <div className="action-bar">
             {!approved ? (
               <Button variant="primary" icon={<Check size={16} aria-hidden="true" />} busy={approve.isPending} disabled={unsaved} onClick={() => approve.mutate()}>
@@ -479,16 +507,16 @@ function SendPanel({ match, unsaved }: { match: Match; unsaved: boolean }) {
               </Button>
             ) : (
               <Button
-                variant="primary"
+                variant={sentBefore ? "secondary" : "primary"}
                 icon={<Send size={16} aria-hidden="true" />}
                 busy={send.isPending}
                 disabled={problems.length > 0 || mailboxMissing || unsaved}
-                onClick={() => send.mutate()}
+                onClick={() => (sentBefore ? setConfirmingAgain(true) : send.mutate())}
               >
-                Send application
+                {sentBefore ? "Send application again" : "Send application"}
               </Button>
             )}
-            {match.status !== "rejected" && (
+            {match.status !== "rejected" && !sentBefore && (
               <Button variant="ghost" busy={reject.isPending} onClick={() => reject.mutate()}>
                 Skip this job
               </Button>
@@ -496,8 +524,8 @@ function SendPanel({ match, unsaved }: { match: Match; unsaved: boolean }) {
           </div>
         )}
 
-        {hasLetter && approved && !application && problems.length === 0 && !mailboxMissing && (
-          <p className="muted small">Nothing is sent until you press Send application.</p>
+        {hasLetter && approved && (!application || canSendAgain) && problems.length === 0 && !mailboxMissing && (
+          <p className="muted small">{sentBefore ? "Nothing is sent again unless you press Send application again and confirm." : "Nothing is sent until you press Send application."}</p>
         )}
         {match.status === "rejected" && <p className="muted small">You skipped this job. Approve the letter if you change your mind.</p>}
       </div>

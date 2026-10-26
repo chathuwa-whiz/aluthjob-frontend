@@ -9,6 +9,7 @@ import type { MailAccount } from "../api/types";
 import { useAuth } from "../auth/AuthProvider";
 import { useResumes } from "../auth/ResumeProvider";
 import { Alert } from "../components/Alert";
+import { AppPasswordGuide } from "../components/AppPasswordGuide";
 import { EmptyState, PageHead, Skeleton } from "../components/Bits";
 import { Button, buttonClass } from "../components/Button";
 import { PasswordField, TextField } from "../components/Field";
@@ -21,14 +22,15 @@ const KNOWN_DOMAINS = ["gmail.com", "googlemail.com", "outlook.com", "hotmail.co
 
 const domainOf = (email: string) => email.split("@")[1]?.trim().toLowerCase() ?? "";
 
+/** Google prints an app password as four groups of four letters; the spaces are only for reading. */
+const tidyAppPassword = (value: string) => (/^[a-z]{4}( [a-z]{4}){3}$/i.test(value.trim()) ? value.replace(/\s+/g, "") : value);
+
 function providerHelp(domain: string): string {
-  if (domain === "gmail.com" || domain === "googlemail.com") {
-    return "Gmail needs an app password, not your normal password. Turn on 2-Step Verification in your Google account, then create an app password (Google calls it \"App passwords\"). Paste the 16 characters here.";
+  if (domain === "gmail.com" || domain === "googlemail.com") return "Paste the 16-letter app password from the steps above. It is not your normal Gmail password.";
+  if (["outlook.com", "hotmail.com", "live.com", "msn.com"].includes(domain)) {
+    return "Microsoft may refuse app passwords on personal accounts. If the login fails, connect a Gmail or Yahoo address instead.";
   }
-  if (["outlook.com", "hotmail.com", "live.com"].includes(domain)) {
-    return "Microsoft accounts may need an app password too. Create one in your Microsoft account's security settings if your normal password is refused.";
-  }
-  if (domain === "yahoo.com") return "Yahoo needs an app password. Create one in your Yahoo account security settings.";
+  if (domain === "yahoo.com") return "Paste the app password from the steps above. It is not your normal Yahoo password.";
   return "Use the password you sign in to this email account with. If your provider offers app passwords, an app password is safer.";
 }
 
@@ -165,7 +167,7 @@ function ConnectForm({ candidateId, existing, defaultName, onDone, onCancel }: {
     mutationFn: () =>
       candidates.connectMailbox(candidateId, {
         email: email.trim(),
-        password,
+        password: tidyAppPassword(password),
         ...(fromName.trim() && { fromName: fromName.trim() }),
         ...(showServer && { host: host.trim(), port: Number(port) || 587, secure }),
       }),
@@ -197,6 +199,7 @@ function ConnectForm({ candidateId, existing, defaultName, onDone, onCancel }: {
         )}
 
         <TextField label="Email address" type="email" autoComplete="email" inputMode="email" required value={email} onChange={(event) => setEmail(event.target.value)} />
+        <AppPasswordGuide domain={domain} defaultOpen={!existing} />
         <PasswordField label={domain === "gmail.com" || domain === "googlemail.com" ? "App password" : "Password"} autoComplete="off" required value={password} onChange={(event) => setPassword(event.target.value)} hint={providerHelp(domain)} />
         <TextField label="Name shown to employers" optional value={fromName} onChange={(event) => setFromName(event.target.value)} hint="Appears as the sender's name, for example your full name." />
 

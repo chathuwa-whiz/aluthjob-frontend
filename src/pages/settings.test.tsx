@@ -286,7 +286,10 @@ describe("mailbox page", () => {
     await userEvent.type(screen.getByLabelText("Email address"), "ama@gmail.com");
 
     expect(screen.getByLabelText("App password")).toBeInTheDocument();
-    expect(screen.getByText(/Gmail needs an app password, not your normal password/)).toBeInTheDocument();
+    expect(screen.getByText(/It is not your normal Gmail password/)).toBeInTheDocument();
+    // the walkthrough follows the address and is already open for someone connecting for the first time
+    expect(screen.getByRole("tab", { name: "Gmail" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("link", { name: /Open app passwords/ })).toHaveAttribute("href", "https://myaccount.google.com/apppasswords");
     expect(screen.queryByLabelText("Server")).not.toBeInTheDocument();
   });
 
@@ -309,7 +312,7 @@ describe("mailbox page", () => {
     await userEvent.click(screen.getByRole("button", { name: "Check login and connect" }));
 
     expect(await screen.findByRole("heading", { name: "Connected" })).toBeInTheDocument();
-    expect(api.called("PUT", "/candidates/7/mail-account")[0]!.body).toEqual({ email: "ama@gmail.com", password: "abcd efgh ijkl mnop", fromName: "Ama Perera" });
+    expect(api.called("PUT", "/candidates/7/mail-account")[0]!.body).toEqual({ email: "ama@gmail.com", password: "abcdefghijklmnop", fromName: "Ama Perera" }); // the spaces Google prints are dropped
     expect(screen.getByText("smtp.gmail.com:465")).toBeInTheDocument();
     expect(screen.queryByDisplayValue("abcd efgh ijkl mnop")).not.toBeInTheDocument();
   });

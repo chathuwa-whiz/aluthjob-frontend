@@ -160,6 +160,7 @@ export const signedIn = (overrides: Record<string, Handler> = {}): Record<string
   [`GET /candidates/${CANDIDATE.id}/mail-account`]: { status: 404, message: "No mailbox connected" },
   [`GET /candidates/${CANDIDATE.id}/matches/run`]: { data: null },
   "GET /resumes/analyze": { data: null },
+  "GET /alerts/preferences": { data: { frequency: "daily", minScore: 55, pausedUntil: null, lastSentAt: null } },
   ...overrides,
 });
 

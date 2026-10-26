@@ -227,3 +227,30 @@ export interface MailboxInput {
   port?: number;
   secure?: boolean;
 }
+
+// ---- job-alert emails ----
+
+export type AlertFrequency = "daily" | "weekly" | "off";
+
+export interface AlertPreferences {
+  frequency: AlertFrequency;
+  /** Only matches scoring at least this are announced by email. */
+  minScore: number;
+  pausedUntil: string | null;
+  lastSentAt: string | null;
+}
+
+export type AlertAction = "hide" | "off" | "pause" | "daily" | "weekly";
+
+/** What a button in an alert email will do, shown before anything changes. */
+export interface AlertActionPreview {
+  action: AlertAction;
+  summary: string;
+  confirmLabel: string;
+  jobTitle: string | null;
+}
+
+export interface AlertActionResult {
+  action: AlertAction;
+  message: string;
+}

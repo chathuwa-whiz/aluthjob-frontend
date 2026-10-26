@@ -1,6 +1,6 @@
 import { QueryClient, useQuery } from "@tanstack/react-query";
 import { ApiError } from "./client";
-import { auth, candidates, matches } from "./endpoints";
+import { alerts, auth, candidates, matches } from "./endpoints";
 import type { AnalysisProgress, RunProgress } from "./types";
 
 // Client errors (400-499) are answers, not glitches: retrying them only delays the message
@@ -25,6 +25,7 @@ export const keys = {
   applications: (candidateId: number) => ["applications", candidateId] as const,
   run: (candidateId: number) => ["run", candidateId] as const,
   analysis: ["analysis"] as const,
+  alertPreferences: ["alert-preferences"] as const,
 };
 
 /** How often a running search or CV reading is asked for its progress (tests make it short). */
@@ -106,3 +107,5 @@ export const useAnalysis = () =>
     refetchInterval: (query) => (query.state.data?.status === "running" ? polling.ms : false),
     staleTime: 0,
   });
+
+export const useAlertPreferences = () => useQuery({ queryKey: keys.alertPreferences, queryFn: alerts.preferences });

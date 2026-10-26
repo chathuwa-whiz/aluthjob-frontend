@@ -1,5 +1,9 @@
 import { del, get, patch, post, put, request } from "./client";
 import type {
+  AlertActionPreview,
+  AlertActionResult,
+  AlertFrequency,
+  AlertPreferences,
   Application,
   Candidate,
   CandidateSummary,
@@ -78,4 +82,13 @@ export const matches = {
 export const applications = {
   cancel: (id: number) => post<Application>(`/applications/${id}/cancel`, {}),
   retry: (id: number) => post<Application>(`/applications/${id}/retry`, {}),
+};
+
+export const alerts = {
+  preferences: () => get<AlertPreferences>("/alerts/preferences"),
+  savePreferences: (change: { frequency?: AlertFrequency; minScore?: number; paused?: boolean }) => put<AlertPreferences>("/alerts/preferences", change),
+
+  // The buttons in an alert email work signed in or not: the signed token in the link is the authority
+  preview: (token: string) => post<AlertActionPreview>("/alerts/preview", { token }, { answers401: true }),
+  act: (token: string) => post<AlertActionResult>("/alerts/act", { token }, { answers401: true }),
 };

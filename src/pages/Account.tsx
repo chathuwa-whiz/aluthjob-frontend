@@ -1,7 +1,9 @@
-import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { messageOf } from "../api/client";
-import { auth } from "../api/endpoints";
+import { alerts, auth } from "../api/endpoints";
+import { keys, useAlertPreferences } from "../api/queries";
+import type { AlertFrequency } from "../api/types";
 import { useAuth } from "../auth/AuthProvider";
 import { Alert } from "../components/Alert";
 import { PageHead } from "../components/Bits";
@@ -37,6 +39,7 @@ export function AccountPage() {
           </div>
         </section>
 
+        <EmailAlerts />
         <ChangePassword />
         <DeleteAccount />
       </div>
@@ -143,6 +146,107 @@ function DeleteAccount() {
             </div>
           </form>
         )}
+      </div>
+    </section>
+  );
+}
+
+const FREQUENCIES: { value: AlertFrequency; label: string; hint: string }[] = [
+  { value: "daily", label: "Daily", hint: "At most one email a day, and only when there is a new match." },
+  { value: "weekly", label: "Weekly", hint: "One email a week with your best new matches." },
+  { value: "off", label: "Never", hint: "No job emails. Account emails (confirm, reset password) still arrive." },
+];
+
+const STRENGTHS = [
+  { value: 55, label: "Good matches and better" },
+  { value: 65, label: "Strong matches only" },
+  { value: 75, label: "Excellent matches only" },
+];
+
+function EmailAlerts() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const { data: prefs, isPending, isError, error } = useAlertPreferences();
+
+  // The link "Change what I receive" in an alert email lands here
+  useEffect(() => {
+    if (prefs && window.location.hash === "#alerts") document.getElementById("alerts")?.scrollIntoView({ block: "start" });
+  }, [prefs]);
+
+  const save = useMutation({
+    mutationFn: alerts.savePreferences,
+    onSuccess: (saved) => {
+      queryClient.setQueryData(keys.alertPreferences, saved);
+      toast("Saved");
+    },
+  });
+
+  const pausedUntil = prefs?.pausedUntil && prefs.pausedUntil > new Date().toISOString() ? prefs.pausedUntil : null;
+
+  return (
+    <section className="panel" id="alerts" aria-labelledby="alerts-heading">
+      <div className="panel__head">
+        <h2 id="alerts-heading">Email updates about new jobs</h2>
+      </div>
+      <div className="panel__body form">
+        <p className="muted">
+          We email you when new vacancies match your CV, so you do not have to keep checking. One email at a time, never one per job, and nothing when there is nothing new. We never apply for you.
+        </p>
+
+        {(isError || save.isError) && <Alert kind="bad">{messageOf(save.error ?? error)}</Alert>}
+
+        {isPending ? (
+          <p className="muted">Loading…</p>
+        ) : prefs ? (
+          <>
+            <fieldset className="form" disabled={save.isPending} style={{ border: 0, padding: 0, margin: 0 }}>
+              <legend className="field__label">How often</legend>
+              {FREQUENCIES.map(({ value, label, hint }) => (
+                <label className="check" key={value}>
+                  <input type="radio" name="alert-frequency" checked={prefs.frequency === value} onChange={() => save.mutate({ frequency: value })} />
+                  <span>
+                    <strong>{label}</strong>
+                    <br />
+                    <span className="muted">{hint}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+
+            {prefs.frequency !== "off" && (
+              <>
+                <div className="field">
+                  <label className="field__label" htmlFor="alert-strength">
+                    Which matches
+                  </label>
+                  <select id="alert-strength" className="select" value={prefs.minScore} disabled={save.isPending} onChange={(event) => save.mutate({ minScore: Number(event.target.value) })}>
+                    {STRENGTHS.map(({ value, label }) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                    {!STRENGTHS.some(({ value }) => value === prefs.minScore) && <option value={prefs.minScore}>Matches of {prefs.minScore}% and better</option>}
+                  </select>
+                </div>
+
+                <div className="form-actions">
+                  {pausedUntil ? (
+                    <>
+                      <span className="muted">Paused until {formatDate(pausedUntil)}.</span>
+                      <Button onClick={() => save.mutate({ paused: false })} disabled={save.isPending}>
+                        Resume now
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={() => save.mutate({ paused: true })} disabled={save.isPending}>
+                      Pause for 7 days
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </>
+        ) : null}
       </div>
     </section>
   );

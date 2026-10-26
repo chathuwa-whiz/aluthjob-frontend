@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { Profile } from "../api/types";
@@ -489,6 +489,32 @@ describe("account page", () => {
     await userEvent.click(screen.getByRole("button", { name: "Change password" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Incorrect password");
+  });
+
+  it("shows the email-update settings and saves a change", async () => {
+    const api = fakeApi(
+      signedIn({
+        "PUT /alerts/preferences": { data: { frequency: "weekly", minScore: 55, pausedUntil: null, lastSentAt: null } },
+      }),
+    );
+    renderApp("/account");
+
+    expect(await screen.findByRole("heading", { name: "Email updates about new jobs" })).toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /Daily/ })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("radio", { name: /Weekly/ }));
+
+    await waitFor(() => expect(screen.getByRole("radio", { name: /Weekly/ })).toBeChecked());
+    expect(api.called("PUT", "/alerts/preferences")[0]!.body).toEqual({ frequency: "weekly" });
+  });
+
+  it("hides the match strength and pause controls once emails are switched off", async () => {
+    fakeApi(signedIn({ "GET /alerts/preferences": { data: { frequency: "off", minScore: 55, pausedUntil: null, lastSentAt: null } } }));
+    renderApp("/account");
+
+    expect(await screen.findByRole("radio", { name: /Never/ })).toBeChecked();
+    expect(screen.queryByLabelText("Which matches")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Pause for 7 days" })).not.toBeInTheDocument();
   });
 
   it("deletes the account only after a password and an explicit acknowledgement, then returns to sign-in", async () => {

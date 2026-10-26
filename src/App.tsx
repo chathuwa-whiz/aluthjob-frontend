@@ -5,6 +5,7 @@ import { Skeleton } from "./components/Bits";
 import { AppShell, AuthLayout } from "./components/Layouts";
 import { AccountPage } from "./pages/Account";
 import { ApplicationsPage } from "./pages/Applications";
+import { EmailAction } from "./pages/EmailAction";
 import { ForgotPassword, Login, Register, ResetPassword } from "./pages/AuthPages";
 import { MailboxPage } from "./pages/Mailbox";
 import { MatchDetail } from "./pages/MatchDetail";
@@ -73,6 +74,7 @@ export function App() {
         }
       />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/email-action" element={<EmailAction />} />
 
       <Route element={<RequireAccount />}>
         <Route index element={<Matches />} />

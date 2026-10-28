@@ -51,20 +51,16 @@ describe("resume page", () => {
 
   it("shows what is being done with the CV, how far along it is and the time, then what was found for checking", async () => {
     let uploaded = false;
+    let current: ReturnType<typeof analysis> | null = null;
     const api = fakeApi(
       signedIn({
         ...profileRoute,
         "GET /candidates": () => ({ data: uploaded ? [CANDIDATE] : [] }),
-        "POST /resumes/analyze": { status: 202, data: analysis() },
-        "GET /resumes/analyze": frames(
-          analysis({ phase: "reading", elapsedMs: 2_000 }),
-          analysis({ phase: "understanding", elapsedMs: 9_000, characters: 3420, links: 2, skills: 12, writing: 0.4 }),
-          analysis({ phase: "understanding", elapsedMs: 20_000, characters: 3420, links: 2, skills: 12, writing: 0.4 }),
-          (() => {
-            uploaded = true;
-            return analysis({ status: "done", phase: "done", elapsedMs: 41_000, characters: 3420, skills: 12, writing: 1, result: READ });
-          })(),
-        ),
+        "POST /resumes/analyze": () => {
+          current = analysis({ phase: "reading", elapsedMs: 2_000 });
+          return { status: 202, data: current };
+        },
+        "GET /resumes/analyze": () => ({ data: current }),
       }),
     );
     renderApp("/resume");
@@ -75,6 +71,7 @@ describe("resume page", () => {
     expect(screen.getByText("cv.pdf")).toBeInTheDocument();
 
     // what the server has worked out so far
+    current = analysis({ phase: "understanding", elapsedMs: 20_000, characters: 3420, links: 2, skills: 12, writing: 0.4 });
     expect(await screen.findByText("Working out your skills, jobs and education")).toBeInTheDocument();
     expect(screen.getByText("3,420 characters")).toBeInTheDocument();
     expect(screen.getByText("Skills found").nextSibling).toHaveTextContent("12");
@@ -83,6 +80,8 @@ describe("resume page", () => {
     expect(screen.getByText("Read the text").closest("li")).toHaveClass("track__step--done");
     expect(screen.getByRole("progressbar", { name: "Reading your CV" })).toHaveAttribute("aria-valuenow", "45");
 
+    uploaded = true;
+    current = analysis({ status: "done", phase: "done", elapsedMs: 41_000, characters: 3420, skills: 12, writing: 1, result: READ });
     expect(await screen.findByText("We have read your CV")).toBeInTheDocument();
     expect(await screen.findByLabelText("Full name")).toHaveValue("Ama Perera");
     expect(screen.queryByRole("heading", { name: "Reading your CV" })).not.toBeInTheDocument();
@@ -90,11 +89,15 @@ describe("resume page", () => {
   });
 
   it("says so when the same CV was read before", async () => {
+    let current: ReturnType<typeof analysis> | null = null;
     fakeApi(
       signedIn({
         ...profileRoute,
-        "POST /resumes/analyze": { status: 202, data: analysis() },
-        "GET /resumes/analyze": frames(analysis({ phase: "understanding", reused: true, characters: 3420, skills: 12 }), analysis({ status: "done", phase: "done", reused: true, result: READ })),
+        "POST /resumes/analyze": () => {
+          current = analysis({ phase: "understanding", reused: true, characters: 3420, skills: 12 });
+          return { status: 202, data: current };
+        },
+        "GET /resumes/analyze": () => ({ data: current }),
       }),
     );
     renderApp("/resume");
@@ -102,6 +105,7 @@ describe("resume page", () => {
     await userEvent.upload(await screen.findByLabelText("CV file"), pdf());
 
     expect(await screen.findByText("You uploaded this CV before, so there is nothing new to read")).toBeInTheDocument();
+    current = analysis({ status: "done", phase: "done", reused: true, result: READ });
     expect(await screen.findByText("We have read your CV")).toBeInTheDocument();
   });
 
@@ -123,16 +127,18 @@ describe("resume page", () => {
   });
 
   it("follows a CV that is still being read when the person returns to the page", async () => {
+    let current = analysis({ phase: "understanding", fileName: "ama-cv.pdf", skills: 9, writing: 0.2 });
     const api = fakeApi(
       signedIn({
         ...profileRoute,
-        "GET /resumes/analyze": frames(analysis({ phase: "understanding", fileName: "ama-cv.pdf", skills: 9, writing: 0.2 }), analysis({ status: "done", phase: "done", fileName: "ama-cv.pdf", result: READ })),
+        "GET /resumes/analyze": () => ({ data: current }),
       }),
     );
     renderApp("/resume");
 
     expect(await screen.findByRole("heading", { name: "Reading your CV" })).toBeInTheDocument();
     expect(screen.getByText("ama-cv.pdf")).toBeInTheDocument();
+    current = analysis({ status: "done", phase: "done", fileName: "ama-cv.pdf", result: READ });
     expect(await screen.findByText("We have read your CV")).toBeInTheDocument();
     expect(api.called("POST", "/resumes/analyze")).toHaveLength(0);
   });

@@ -148,7 +148,14 @@ describe("searching for jobs", () => {
   });
 
   it("shows which site is being read, which advert, how far along it is and the time, then the outcome", async () => {
-    const api = fakeApi(withMatches({ [`POST ${RUN}`]: { status: 202, data: run() }, [`GET ${RUN}`]: frames(collecting, collecting, reading, reading, finishedRun()) }));
+    let current: ReturnType<typeof run> | null = null;
+    const api = fakeApi(withMatches({
+      [`POST ${RUN}`]: () => {
+        current = collecting;
+        return { status: 202, data: current };
+      },
+      [`GET ${RUN}`]: () => ({ data: current }),
+    }));
     renderApp("/");
 
     await userEvent.click(await screen.findByRole("button", { name: "Find new jobs" }));
@@ -163,17 +170,19 @@ describe("searching for jobs", () => {
     expect(screen.getByRole("button", { name: "Find new jobs" })).toBeDisabled();
 
     // then the advert being read right now
+    current = reading;
     expect(await screen.findByText("Reading the full advert 6 of 20")).toBeInTheDocument();
     expect(screen.getByText("Senior React Developer")).toBeInTheDocument();
     expect(screen.getByText("Acme Software · Xpress Jobs")).toBeInTheDocument();
     expect(screen.getByText("898")).toBeInTheDocument(); // vacancies compared
     expect(screen.getByRole("progressbar", { name: "Searching jobs for you" })).toHaveAttribute("aria-valuenow", expect.stringMatching(/^\d+$/));
-    expect(screen.getByRole("list", { name: "Steps" }) ?? null).toBeTruthy();
+    expect(screen.getByText("Read the best adverts").closest("ol")).toBeInTheDocument();
 
     // the clock comes from the server's measurement
     expect(screen.getByText(/^0:(4\d|5\d)$|^[01]:\d\d$/)).toBeInTheDocument();
 
     // and when it ends the list is refreshed and the outcome stated
+    current = finishedRun();
     expect(await screen.findByText("Search finished in 1:23")).toBeInTheDocument();
     expect(screen.getByText(/Looked at 898 vacancies and kept 18 matches, the best scoring 76 out of 100/)).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Searching jobs for you" })).not.toBeInTheDocument();

@@ -76,6 +76,8 @@ export interface Job {
 export type MatchStatus = "suggested" | "approved" | "rejected";
 
 export interface Match {
+  /** Set only after the person confirms submitting on the employer's site. */
+  appliedOnSiteAt?: string | null;
   id: number;
   candidateId: number;
   jobId: number;

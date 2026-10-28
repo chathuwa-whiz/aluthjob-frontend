@@ -403,6 +403,15 @@ describe("applications page", () => {
     expect(within(ready).queryByText("QA Engineer")).not.toBeInTheDocument(); // already sent
   });
 
+  it("keeps applications submitted on another site out of the email send queue", async () => {
+    const external = match({ id: 9, status: "approved", appliedOnSiteAt: "2026-10-28T12:00:00.000Z", coverLetter: "Optional letter", job: job({ title: "Already Applied Role" }) });
+    fakeApi(routes({ "GET /candidates/7/matches": { data: [approved, external] } }));
+    renderApp("/applications");
+    const ready = (await screen.findByRole("heading", { name: "Approved and ready to send" })).closest("section") as HTMLElement;
+    expect(within(ready).getByRole("button", { name: "Send all 1" })).toBeInTheDocument();
+    expect(within(ready).queryByText("Already Applied Role")).not.toBeInTheDocument();
+  });
+
   it("names each application by its job and says how it went", async () => {
     fakeApi(routes());
     renderApp("/applications");

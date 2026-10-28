@@ -68,9 +68,10 @@ export const MATCH_STATUS_LABEL: Record<MatchStatus, string> = {
 
 /**
  * The one status shown for a match. Once an application exists it tells the real story ("Sent"), because
- * "Approved" only means the person approved the letter.
+ * "Applied on their site" records the person's confirmation of an external submission.
  */
-export function matchBadge(status: MatchStatus, application?: Pick<Application, "status"> | null): { label: string; kind: "ok" | "bad" | "primary" | undefined } {
+export function matchBadge(status: MatchStatus, application?: Pick<Application, "status"> | null, appliedOnSiteAt?: string | null): { label: string; kind: "ok" | "bad" | "primary" | undefined } {
+  if (status === "approved" && appliedOnSiteAt) return { label: "Applied on their site", kind: "ok" };
   switch (application?.status) {
     case "sent":
       return { label: "Sent", kind: "ok" };

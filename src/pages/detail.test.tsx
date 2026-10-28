@@ -348,6 +348,55 @@ describe("match page: addresses read from a picture", () => {
 describe("match page: jobs that take applications on their own site", () => {
   const portal = (overrides = {}) => match({ applyMethod: "portal", job: job({ applyEmail: null, applyEmailSource: null, applyUrl: "https://employer.example/apply" }), coverLetter: LETTER, subject: "s", ...overrides });
 
+  it("records applying on the site without a letter or mailbox and moves the job into Approved", async () => {
+    let current = portal({ coverLetter: null, subject: null });
+    const api = screenFor(current, {
+      "GET /candidates/7/mail-account": { status: 404, message: "No mailbox connected" },
+      "GET /candidates/7/matches": () => ({ data: [current] }),
+      "POST /matches/1/applied-on-site": () => {
+        current = { ...current, status: "approved", appliedOnSiteAt: "2026-10-28T12:00:00.000Z" };
+        return { data: current };
+      },
+    });
+    renderApp("/matches/1");
+
+    const action = await screen.findByRole("button", { name: "I've applied on their site" });
+    expect(action).toBeEnabled();
+    expect(screen.getByRole("heading", { name: "Cover letter (optional)" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: /Open the advert/ }));
+    expect(api.called("POST", "/matches/1/applied-on-site")).toHaveLength(0);
+
+    await userEvent.click(action);
+    expect(await screen.findByText("Application recorded")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "I've applied on their site" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Send application/ })).not.toBeInTheDocument();
+    expect(api.called("POST", "/matches/1/approve")).toHaveLength(0);
+    expect(api.called("POST", "/matches/1/send")).toHaveLength(0);
+
+    await userEvent.click(screen.getByRole("link", { name: /All matches/ }));
+    expect(await screen.findByRole("tab", { name: /To review/ })).toHaveTextContent("0");
+    expect(screen.queryByRole("link", { name: /Full Stack Developer/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: /Approved/ }));
+    expect(await screen.findByRole("link", { name: /Full Stack Developer/ })).toHaveTextContent("Applied on their site");
+  });
+
+  it("keeps an unsuccessful confirmation available to retry", async () => {
+    screenFor(portal(), { "POST /matches/1/applied-on-site": { status: 503, message: "Please try again" } });
+    renderApp("/matches/1");
+    await userEvent.click(await screen.findByRole("button", { name: "I've applied on their site" }));
+    expect(await screen.findByText("Could not record your application")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "I've applied on their site" })).toBeEnabled();
+    expect(screen.queryByText("Application recorded")).not.toBeInTheDocument();
+  });
+
+  it("shows the saved site application instead of sending controls if the advert later gains an email", async () => {
+    screenFor(withLetter({ status: "approved", appliedOnSiteAt: "2026-10-28T12:00:00.000Z" }));
+    renderApp("/matches/1");
+    expect(await screen.findByText("Application recorded")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Send application/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Approve this letter" })).not.toBeInTheDocument();
+  });
+
   it("says so, links to the employer's page, and offers to copy the letter", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });

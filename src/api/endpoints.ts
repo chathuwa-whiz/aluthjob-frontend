@@ -73,6 +73,7 @@ export const matches = {
   writeLetter: (id: number) => post<Match>(`/matches/${id}/cover-letter`, {}),
   save: (id: number, edits: { subject?: string; coverLetter?: string }) => patch<Match>(`/matches/${id}`, edits),
   approve: (id: number) => post<Match>(`/matches/${id}/approve`, {}),
+  markAppliedOnSite: (id: number) => post<Match>(`/matches/${id}/applied-on-site`, {}),
   reject: (id: number) => post<Match>(`/matches/${id}/reject`, {}),
   preview: (id: number) => get<EmailPreview>(`/matches/${id}/email-preview`),
   confirmAddress: (id: number, address: string) => post<Match>(`/matches/${id}/confirm-address`, { address }),

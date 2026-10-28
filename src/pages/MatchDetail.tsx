@@ -58,7 +58,7 @@ function MatchView({ match }: { match: Match }) {
   const advertUrl = safeHttpUrl(job.url);
   // Shared with the send panel through the query cache; the header shows "Sent" once it has been
   const application = useApplications(match.candidateId).data?.find((item) => item.matchId === match.id);
-  const badge = matchBadge(match.status, application);
+  const badge = matchBadge(match.status, application, match.appliedOnSiteAt);
   const tier = scoreTier(match.score);
   const where = [job.company, job.location].filter(Boolean).join(" · ");
   // Whether the letter on screen differs from the saved one. Approving or sending is blocked meanwhile, so the
@@ -91,8 +91,17 @@ function MatchView({ match }: { match: Match }) {
 
       <div className="detail">
         <div className="stack">
-          <LetterPanel match={match} onUnsavedChange={setUnsaved} />
-          {match.applyMethod === "email" ? <SendPanel match={match} unsaved={unsaved} /> : <PortalPanel match={match} advertUrl={advertUrl} />}
+          {match.applyMethod === "email" && !match.appliedOnSiteAt ? (
+            <>
+              <LetterPanel match={match} onUnsavedChange={setUnsaved} />
+              <SendPanel match={match} unsaved={unsaved} />
+            </>
+          ) : (
+            <>
+              <PortalPanel match={match} advertUrl={advertUrl} />
+              <LetterPanel match={match} onUnsavedChange={setUnsaved} />
+            </>
+          )}
         </div>
 
         <aside className="detail__aside" aria-label="About this job">
@@ -250,7 +259,7 @@ function LetterPanel({ match, onUnsavedChange }: { match: Match; onUnsavedChange
     mutationFn: () => matchApi.save(match.id, { subject: subject.trim(), coverLetter: body.trim() }),
     onSuccess: async (updated) => {
       await accept(updated);
-      toast(match.status === "approved" ? "Saved. Approve it again to send this version." : "Saved");
+      toast(match.status === "approved" && !match.appliedOnSiteAt ? "Saved. Approve it again to send this version." : "Saved");
     },
   });
 
@@ -264,7 +273,7 @@ function LetterPanel({ match, onUnsavedChange }: { match: Match; onUnsavedChange
   return (
     <section className="panel" aria-labelledby="letter-heading">
       <div className="panel__head">
-        <h2 id="letter-heading">Cover letter</h2>
+        <h2 id="letter-heading">{match.applyMethod === "portal" || match.appliedOnSiteAt ? "Cover letter (optional)" : "Cover letter"}</h2>
         {hasLetter && !write.isPending && (
           <Button size="sm" variant="secondary" icon={<Sparkles size={15} aria-hidden="true" />} onClick={requestNewDraft}>
             Write a new draft
@@ -306,7 +315,9 @@ function LetterPanel({ match, onUnsavedChange }: { match: Match; onUnsavedChange
 
         {!hasLetter && !write.isPending && (
           <div className="well stack" style={{ gap: "var(--s-3)" }}>
-            <p>There is no letter for this job yet. We can draft one from your CV, and you can change every word before approving it.</p>
+            <p>{match.applyMethod === "portal" || match.appliedOnSiteAt
+              ? "If the employer asks for a cover letter, you can draft one from your CV and copy it into their form."
+              : "There is no letter for this job yet. We can draft one from your CV, and you can change every word before approving it."}</p>
             <div>
               <Button variant="primary" icon={<Sparkles size={16} aria-hidden="true" />} onClick={() => write.mutate()}>
                 Write the letter
@@ -317,10 +328,10 @@ function LetterPanel({ match, onUnsavedChange }: { match: Match; onUnsavedChange
 
         {hasLetter && !write.isPending && (
           <>
-            <TextField label="Email subject" value={subject} maxLength={200} onChange={(event) => setSubject(event.target.value)} />
+            <TextField label={match.applyMethod === "portal" || match.appliedOnSiteAt ? "Letter title" : "Email subject"} value={subject} maxLength={200} onChange={(event) => setSubject(event.target.value)} />
             <TextAreaField label="Letter" className="letter-body" rows={14} value={body} onChange={(event) => setBody(event.target.value)} />
 
-            {match.status === "approved" && (
+            {match.status === "approved" && !match.appliedOnSiteAt && (
               <p className="muted small">You approved this version. If you change it, your approval is withdrawn so you always approve the final text.</p>
             )}
 
@@ -595,6 +606,16 @@ function PortalPanel({ match, advertUrl }: { match: Match; advertUrl: string | n
   const queryClient = useQueryClient();
   const toast = useToast();
   const target = safeHttpUrl(match.job.applyUrl) ?? advertUrl;
+  const applied = match.status === "approved" && Boolean(match.appliedOnSiteAt);
+
+  const markApplied = useMutation({
+    mutationFn: () => matchApi.markAppliedOnSite(match.id),
+    onSuccess: async (updated) => {
+      queryClient.setQueryData(keys.match(match.id), updated);
+      await queryClient.invalidateQueries({ queryKey: keys.matches(match.candidateId) });
+      toast("Marked as applied. You can find this job under Approved.");
+    },
+  });
 
   const reject = useMutation({
     mutationFn: () => matchApi.reject(match.id),
@@ -618,32 +639,44 @@ function PortalPanel({ match, advertUrl }: { match: Match; advertUrl: string | n
     <section className="panel" aria-labelledby="portal-heading">
       <div className="panel__head">
         <h2 id="portal-heading">Apply on their site</h2>
-        <Pill>
-          <ExternalLink size={13} aria-hidden="true" /> No email address
+        <Pill kind={applied ? "ok" : undefined}>
+          <ExternalLink size={13} aria-hidden="true" /> {applied ? "Applied on their site" : "No email address"}
         </Pill>
       </div>
       <div className="panel__body">
-        <p>
-          This employer takes applications on its own website or portal, so there is no address we can email. Open the advert, apply there, and paste in your letter if the form has room for one.
-        </p>
+        {applied ? (
+          <Alert kind="ok" title="Application recorded">
+            You marked this job as applied on the employer's site. It is saved under Approved.
+          </Alert>
+        ) : (
+          <p>
+            Open the advert and submit your application on the employer's site. Then come back and select “I've applied on their site” to move this job to Approved. A cover letter is optional.
+          </p>
+        )}
         <div className="action-bar">
           {target && (
-            <a className={buttonClass("primary")} href={target} target="_blank" rel="noopener noreferrer">
+            <a className={buttonClass("secondary")} href={target} target="_blank" rel="noopener noreferrer">
               <ExternalLink size={16} aria-hidden="true" /> Open the advert <span className="visually-hidden">(opens in a new tab)</span>
             </a>
+          )}
+          {!applied && (
+            <Button variant="primary" icon={<Check size={16} aria-hidden="true" />} busy={markApplied.isPending} disabled={reject.isPending} onClick={() => markApplied.mutate()}>
+              I've applied on their site
+            </Button>
           )}
           {match.coverLetter && (
             <Button variant="secondary" icon={<Copy size={16} aria-hidden="true" />} onClick={() => void copy()}>
               Copy the letter
             </Button>
           )}
-          {match.status !== "rejected" && (
-            <Button variant="ghost" busy={reject.isPending} onClick={() => reject.mutate()}>
+          {match.status !== "rejected" && !applied && (
+            <Button variant="ghost" busy={reject.isPending} disabled={markApplied.isPending} onClick={() => reject.mutate()}>
               Skip this job
             </Button>
           )}
         </div>
         {reject.isError && <Alert kind="bad">{messageOf(reject.error)}</Alert>}
+        {markApplied.isError && <Alert kind="bad" title="Could not record your application">{messageOf(markApplied.error)}</Alert>}
         <p className="muted small">
           <Mail size={14} aria-hidden="true" style={{ display: "inline", marginRight: 4 }} />
           Jobs that publish an email address can be sent from here, with your CV attached.

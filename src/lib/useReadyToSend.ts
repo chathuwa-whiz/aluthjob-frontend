@@ -14,6 +14,6 @@ export function useReadyToSend(): Match[] {
 
   return useMemo(() => {
     const queued = new Set(applications.data?.map((application) => application.matchId));
-    return (matches.data ?? []).filter((match) => match.status === "approved" && match.applyMethod === "email" && !queued.has(match.id));
+    return (matches.data ?? []).filter((match) => match.status === "approved" && match.applyMethod === "email" && !match.appliedOnSiteAt && !queued.has(match.id));
   }, [matches.data, applications.data]);
 }

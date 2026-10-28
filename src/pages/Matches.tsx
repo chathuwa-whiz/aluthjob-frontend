@@ -173,7 +173,7 @@ export function Matches() {
                       ? "No matches here can be applied to by email. Turn that filter off to see the rest, or search again for new jobs."
                       : "You have been through every match. Search again later for newly posted jobs."
                     : tab === "approved"
-                      ? "Approve a cover letter on any match and it will wait here until you send it."
+                      ? "Approved email applications and jobs you mark as applied on the employer's site appear here."
                       : "Jobs you skip are kept here, out of your way."}
                 </EmptyState>
               </div>
@@ -206,8 +206,8 @@ function MatchRow({ match, application }: { match: Match; application?: Applicat
   const where = [job.company, job.location].filter(Boolean).join(" · ");
   const closes = job.closingAt ? `Closes ${formatDate(job.closingAt)}` : null;
   // An address read from a picture has to be double-checked by the person before anything is sent to it
-  const needsAddressCheck = match.applyMethod === "email" && job.applyEmailSource === "image";
-  const badge = matchBadge(match.status, application);
+  const needsAddressCheck = match.applyMethod === "email" && !match.appliedOnSiteAt && job.applyEmailSource === "image";
+  const badge = matchBadge(match.status, application, match.appliedOnSiteAt);
 
   return (
     <Link to={`/matches/${match.id}`} className="match-row">
@@ -226,7 +226,7 @@ function MatchRow({ match, application }: { match: Match; application?: Applicat
       </span>
 
       <span className="match-row__side">
-        {match.applyMethod === "email" ? (
+        {match.applyMethod === "email" && !match.appliedOnSiteAt ? (
           <Pill kind="primary">
             <Mail size={13} aria-hidden="true" /> By email
           </Pill>
@@ -238,7 +238,7 @@ function MatchRow({ match, application }: { match: Match; application?: Applicat
         {needsAddressCheck && <Pill kind="warn">Check address</Pill>}
         {match.status === "approved" && (
           <Pill kind={badge.kind}>
-            {application?.status === "sent" ? <Send size={13} aria-hidden="true" /> : <Check size={13} aria-hidden="true" />} {application ? badge.label : "Approved"}
+            {application?.status === "sent" ? <Send size={13} aria-hidden="true" /> : <Check size={13} aria-hidden="true" />} {badge.label}
           </Pill>
         )}
         {match.status === "suggested" && match.coverLetter && <Pill>Letter drafted</Pill>}

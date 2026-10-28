@@ -53,7 +53,7 @@ export interface UploadResult {
   metadata: { fileName: string; extractedCharacters: number; processedAt: string };
 }
 
-export type JobSource = "topjobs" | "observerjobs" | "jobpal" | "governmentjobs" | "rooster" | "dreamjobs" | "ikman" | "xpress";
+export type JobSource = "topjobs" | "observerjobs" | "jobpal" | "governmentjobs" | "rooster" | "dreamjobs" | "ikman" | "xpress" | "findmyjob" | "finders";
 
 export interface Job {
   id: number;

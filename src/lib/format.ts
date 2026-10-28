@@ -56,6 +56,8 @@ export const SOURCE_LABEL: Record<JobSource, string> = {
   dreamjobs: "DreamJobs",
   ikman: "ikman.lk",
   xpress: "Xpress Jobs",
+  findmyjob: "FindMyJob.lk",
+  finders: "Finders.lk",
 };
 
 export const MATCH_STATUS_LABEL: Record<MatchStatus, string> = {
